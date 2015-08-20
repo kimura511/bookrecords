@@ -1,0 +1,1264 @@
+8/11
+gitの状態を確認したいとき
+git branch -a
+ブランチをすべて表示
+git remote -v
+リモートの表示
+git branch -D （ブランチ名）
+ブランチを消す
+git push origin :（ブランチ名）
+リモートを消す
+git help
+gitのコマンドを教えてくれる
+
+アクションとは（コントローラのメソッド）
+
+http://railsdoc.com/migration
+マイグレーションファイルについて
+
+モデルの作り方
+rails g model (大文字スタートの名前) hoge:(型) 
+(型は省略できる)
+
+ユニークにしたければマイグレーションファイルに記載を追加する
+ t.index :email, unique: true # この行を追加
+
+モデルができたら次はコントローラー
+
+
+8/10
+
+rake routes` を行ってみてください。
+`prefix` と表示されている部分に、 `_path` を足すことにより、そのページへのアドレスが取ることができます。
+link_toに関しては
+
+<%=` としてしまうと、中にあるものをそのまま出力してしまうため、このような形になってしまいます。
+ <%#= debug(@followings) %>
+デバッグ関数
+
+<%= form_for(Message.new) do |f| %>
+Message.new
+空のインスタンスをつくる
+インスタンスって何？
+枠みたいなもの
+そこが form_for のすごいところでもあります。
+`Message.new` というものを作成頂きましたよね。
+そして、それを管理(コントロール)しているのが、 `messages_controller` というのも理解頂けているかと思われます。
+`form_for` では、自動的にその辺を察し、送信先を指定してくれます。
+参考: http://qiita.com/shunsuke227ono/items/7accec12eef6d89b0aa9 (edited)
+routeに書くファイル
+コントローラー:アクション
+
+
+8/7
+ファイル名を指定してあげたら、 member動いた
+
+
+8/5
+app/controllers/static_pages_controller.rb
+class UsersController < ApplicationController
+  def show
+    @user = User.find(params[:id])
+    @microposts = @user.microposts
+  end
+  
+  ...
+end
+@microposts = @user.micropostsでユーザーに紐付いたマイクロポストを@micropostsに代入しています。
+
+app/views/microposts/_micropost.html.erb
+<li id="micropost-<%= micropost.id %>">
+  <%= link_to gravatar_for(micropost.user, size: 50), micropost.user %>
+  <span class="user"><%= link_to micropost.user.name, micropost.user %></span>
+  <span class="content"><%= micropost.content %></span>
+  <span class="timestamp">
+    Posted <%= time_ago_in_words(micropost.created_at) %> ago.
+  </span>
+</li>
+
+上のテンプレートを使用できるように、以下のように変更します。
+app/views/users/show.html.erb
+<div class="row">
+  <aside class="col-md-4">
+    <section class="user_info">
+      <h1>
+        <%= gravatar_for @user %>
+        <%= @user.name %>
+      </h1>
+    </section>
+  </aside>
+  <div class="col-md-8">
+    <% if @user.microposts.any? %>
+      <h3>Microposts (<%= @user.microposts.count %>)</h3>
+      <ol class="microposts">
+        <%= render @microposts %>
+      </ol>
+    <% end %>
+  </div>
+</div>
+
+<%= render @microposts %>
+@micropostをレンダリング（http://railsdoc.com/references/render）
+
+<%= render partial: 'microposts/micropost', collection: @microposts %>
+「:partial」
+部分テンプレートを呼び出して表示
+「:collection」
+部分テンプレートを繰り返し表示
+
+<% @microposts.each do |micropost| %>
+  <%= render partial: 'microposts/micropost', locals: { micropost: micropost } %>
+<% end %>
+繰り返して表示をruby版で書き換えたもの
+
+8.6 削除
+<li id="micropost-<%= micropost.id %>">
+  <%= link_to gravatar_for(micropost.user, size: 50), micropost.user %>
+  グローバルアバターを使って画像表示、サイズは変えてます。
+  <span class="user"><%= link_to micropost.user.name, micropost.user %></span>
+  <span class="content"><%= micropost.content %></span>
+  <span class="timestamp">
+    Posted <%= time_ago_in_words(micropost.created_at) %> ago.
+    t.index [:user_id, :created_at]ってやつで設定してある。
+    <% if current_user == micropost.user %>
+      <%= link_to "delete", micropost, method: :delete,
+                                       data: { confirm: "You sure?" } %>
+      リンクにメソッドを追加する。「data: { confirm: "You sure?" }」は確認のメソッド。
+      「method: :delete」はhtmlでフォームタグで設定できるものと一緒
+    <% end %>
+  </span>
+</li>
+app/views/users/show.html.erb
+に以下を追加
+
+app/controllers/microposts_controller.rb
+以下を追加
+ def destroy
+    @micropost = current_user.microposts.find_by(id: params[:id])
+    return redirect_to root_url if @micropost.nil?
+    @micropost.destroy
+    flash[:success] = "Micropost deleted"
+    redirect_to request.referrer || root_url
+  end
+  
+9.1 モデルの作成
+
+以下の図のようにユーザーがフォローしている人と、フォローされている人をデータとして保存するために、relationshipというオブジェクト（Relationshipモデルのインスタンス）を作成することを考えます。  
+rails generate model Relationship follower:references followed:references
+references（http://railsdoc.com/references/references）、
+（http://tkymtk.hatenablog.com/entry/rails-4-three-way-to-write-migration-2014-1）、
+外部キーを設定する
+出来上がったモデルに対して、
+app/models/relationship.rb
+class Relationship < ActiveRecord::Base
+  belongs_to :follower, class_name: "User"
+  belongs_to :followed, class_name: "User"
+end
+
+class CreateRelationships < ActiveRecord::Migration
+  def change
+    create_table :relationships do |t|
+      t.references :follower, index: true
+      t.references :followed, index: true
+
+      t.timestamps
+
+      t.index [:follower_id, :followed_id], unique: true # この行を追加
+    end
+  end
+end
+を追加
+
+app/models/user.rb
+ has_many :following_relationships, class_name:  "Relationship",
+                                     foreign_key: "follower_id",
+                                     dependent:   :destroy
+  has_many :following_users, through: :following_relationships, source: :followed
+following_relationshipsのforeign_keyのfollower_idにuserのidが入るので、
+user.following_relationshipsによって、userがフォローしている場合のRelationshipを取得することができます。
+following_usersでは、has_many 〜 throughという文を使っています。
+throughには、following_relationshipsが指定されていて、上の図のように、following_relationshipsを経由してデータを取得することを意味しています。
+userがフォローしている人は、following_relationshipsのfollowed_idに一致するユーザーになるので、sourceとしてfollowedを指定しています。
+
+app/models/user.rb
+  # 他のユーザーをフォローする
+  def follow(other_user)
+    following_relationships.create(followed_id: other_user.id)
+  end
+
+  # フォローしているユーザーをアンフォローする
+  def unfollow(other_user)
+    following_relationships.find_by(followed_id: other_user.id).destroy
+  end
+
+  # あるユーザーをフォローしているかどうか？
+  def following?(other_user)
+    following_users.include?(other_user)
+  end
+
+$ rails generate controller Relationships
+app/controllers/relationships_controller.rb
+class RelationshipsController < ApplicationController
+  before_action :logged_in_user
+
+  def create
+    @user = User.find(params[:followed_id])
+    current_user.follow(@user)
+  end
+
+  def destroy
+    @user = current_user.following_relationships.find(params[:id]).followed
+    current_user.unfollow(@user)
+  end
+end
+
+  def follow(other_user)
+    following_relationships.create(followed_id: other_user.id)
+  end
+
+  
+
+8/4
+8.4
+app/assets/stylesheets/custom.scss
+に記載を追加
+app/controllers/static_pages_controller.rb
+class StaticPagesController < ApplicationController
+  def home
+    @micropost = current_user.microposts.build if logged_in?
+  end
+end
+
+何してんの？？？
+ログインしている場合は、新しいMicropostクラスのインスタンスをuser_idを紐付けた状態で初期化します。
+current_user.microposts.buildは、Micropost.new(user_id: current_user.id)と同じです????
+前者の方はcurrent_userのhas_many :micropostsで生成されるbuildメソッドを使用していて、
+確実にuser_idが紐付いたデータを作成できるのでこちらを使用するようにしましょう。
+
+
+8/3
+app/controllers/microposts_controller.rb
+
+class MicropostsController < ApplicationController
+  before_action :logged_in_user, only: [:create]
+
+  def create
+    @micropost = current_user.microposts.build(micropost_params)
+    if @micropost.save
+      flash[:success] = "Micropost created!"
+      redirect_to root_url
+    else
+      render 'static_pages/home'
+    end
+  end
+  
+  private
+  def micropost_params
+    params.require(:micropost).permit(:content)
+  end
+end
+
+class MicropostsController < ApplicationController
+  before_action :logged_in_user, only: [:create]
+2行目のbefore_actionで、ApplicationControllerにあるlogged_in_userメソッドを実行し、ログインしていない場合はcreateメソッドは実行しないで/loginにリダイレクトするようにしています。]
+　どんな関数だった？？
+　 def logged_in_user
+    unless logged_in?
+      store_location
+      flash[:danger] = "Please log in."
+      redirect_to login_url
+    end
+  end
+  logged_in?
+  これはセッションヘルパーの中
+  createの前にlogged_in_userを実行
+
+  def create
+    @micropost = current_user.microposts.build(micropost_params)
+    if @micropost.save
+      flash[:success] = "Micropost created!"
+      redirect_to root_url
+    else
+      render 'static_pages/home'
+    end
+  end
+ private
+  def micropost_params
+    params.require(:micropost).permit(:content)
+  end
+end
+
+
+    4行目からのcreateメソッドでは、
+    パラメータを受け取って現在のユーザーに紐付いたMicropostのインスタンスを作成して@micropost変数に入れ、
+    @micropost.saveで保存が成功した場合は、root_urlである/にリダイレクトを行い、
+    失敗した場合はapp/views/static_pages/home.html.erbのテンプレートを表示します。
+    current_userも読み込んである関数で定義している。
+    「user.microposts	ユーザーの全投稿」だから、今のユーザーの全投稿になる、もしうまく行かなかったら、
+    最初のページに戻る
+    build（http://railsdoc.com/references/build）、生成する？？？
+    newとの違いは？？
+    →保存するかどうか
+    そもそも生成するって？？
+    →モデルオブジェクトを生成する
+    モデルオブジェクトって？？
+    モデルの実態？？　いい解説がなかった。
+    Strong Parametersって何が強いの？？
+    ネットの攻撃に強い
+
+    config/routes.rb
+    resources :micropostsを追加
+    リソース化
+    restfulにし放題
+    
+8.4 フォームの作成
+    コントローラーを作ったから、フォームを作る
+    <% if logged_in? %>
+  <div class="row">
+    <aside class="col-md-4">
+      <section class="user_info">
+        <%= render 'shared/user_info' %>
+      </section>
+      <section class="micropost_form">
+        <%= render 'shared/micropost_form' %>
+      </section>
+    </aside>
+  </div>
+<% else %>
+  <div class="center jumbotron">
+    jumbotron="注意を促す大きなボックス"
+    <h1>Welcome to the Microposts</h1>
+    <%= link_to "Sign up now!", signup_path, class: "btn btn-lg btn-primary" %>
+  </div>
+<% end %>
+リンクパスはどこで設定してるの？？？
+app/views/shared/_user_info.html.erb
+<%= link_to gravatar_for(current_user, size: 50), current_user %>
+<h1><%= current_user.name %></h1>
+<span><%= link_to "view my profile", current_user %></span>
+<span><%= pluralize(current_user.microposts.count, "micropost") %></span>
+pluralize(http://railsdoc.com/references/pluralize)複数形に置換
+「pluralize」の使い所？？？
+
+app/views/shared/_micropost_form.html.erb
+<%= form_for(@micropost) do |f| %>
+  <%= render 'shared/error_messages', object: f.object %>
+  <div class="field">
+    <%= f.text_area :content, placeholder: "Compose new micropost..." %>
+  </div>
+  <%= f.submit "Post", class: "btn btn-primary" %>
+<% end %>
+form_for(http://railsdoc.com/references/form_for)、
+モデルオブジェクト（モデルの実態）
+
+
+
+この動画見ておきたい
+http://gihyo.jp/dev/serial/01/rest/0001
+
+http://www.rubylife.jp/rails/routing/index6.html
+8/1
+6.3 フォームの作成
+どうやって作るの？
+app/views/users/new.html.erb
+に以下のソースを貼り付ければOK
+<h1>Sign up</h1>
+
+<div class="row">
+  <div class="col-md-6 col-md-offset-3">
+    <%= form_for(@user) do |f| %>
+
+      <%= f.label :name %>
+      <%= f.text_field :name %>
+
+      <%= f.label :email %>
+      <%= f.text_field :email %>
+
+      <%= f.label :password %>
+      <%= f.password_field :password %>
+
+      <%= f.label :password_confirmation, "Confirmation" %>
+      <%= f.password_field :password_confirmation %>
+
+      <%= f.submit "Create my account", class: "btn btn-large btn-primary" %>
+    <% end %>
+  </div>
+</div>
+わかんないとこある？
+.labelっつうのと、
+label :password_confirmation, 
+"Confirmation" 
+.password_field :password_confirmation
+かな？
+全部html関係のコマンド
+
+6.4 モデルの実装
+出来上がったフォームで実装したものに対しての手続きを記載する
+「Gemfile」を触る
+gem 'bcrypt', '~> 3.1.7'
+を有効にする
+「bcrypt���とは暗号化の便利なツール
+app/models/user.rbに以下を追加する（こいつはmodels作った時にできた）
+ has_secure_password
+・データベースに安全にハッシュ化（暗号化）されたpassword_digestを保存する。
+・passwordとpassword_confirmationをモデルに追加して、パスワードの確認が一致するか検証する。
+・パスワードが正しいときに、ユーザーを返すauthenticateメソッドを提供する。
+バリデーションの追加
+バリデーションなどを追加する為に、以下のようにapp/models/user.rbを変更します。
+class User < ActiveRecord::Base
+  before_save { self.email = email.downcase }
+  セーブ前に、メアドを全て小文字にします
+  validates :name, presence: true, length: { maximum: 50 }
+  名前に制限かけます、空っぽじゃないよ、50文字まで
+  VALID_EMAIL_REGEX = /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i
+　メアドの正規表現
+  validates :email, presence: true, length: { maximum: 255 },
+                    format: { with: VALID_EMAIL_REGEX },
+                    uniqueness: { case_sensitive: false }
+　メアドは255字まで、フォーマットはVALID_EMAIL_REGEX、大文字小文字の識別はしないよー
+  has_secure_password
+  ハッシュ化されたパスワードを保存する
+end
+6.5 コントローラの実装
+以下を追加
+  def create
+    @user = User.new(user_params)
+    ユーザーに新しいデータを作成
+      -newは新しく作成の意味
+    user_paramsは下で定義されてるパラメータ
+    
+    if @user.save
+    もしも、user.saveがデータベースに保存できなかったら、
+    （http://railsdoc.com/references/save）
+    else
+      render 'new'
+    指定したURLを返して
+    （この場合はnew、つまり新規登録）
+    end
+  end
+
+  private
+  ログインにだけ使うパラメータ
+  def user_params
+    params.require(:user).permit(:name, :email, :password,
+                                 :password_confirmation)
+  end
+end
+□privateについて
+  （http://ref.xaio.jp/ruby/classes/module/private）
+  クラス定義やモジュール定義の中でprivateメソッドを呼び出すと、
+  ���れ以降に定義されるインスタンスメソッドはprivateなメソッドになります。
+  戻り値はクラスやモジュール自身です。
+今回の場合は「user_params」が戻り値
+□パラメータの取得(params)
+（http://railsdoc.com/references/params）について
+-使いかた
+ params[:パラメータ名]
+ （http://o.inchiki.jp/obbr/181）
+  params.require(key).permit(filter)
+  # key
+  #   Strong Parameters �����適用したい params の key を指定する。
+  # filter
+  #   Strong Parameters で許可するカラムを指定する。
+　今回の場合、keyはユーザー、
+　パラメータは複数
+ストロングパラメータって何？？？
+（http://ruby-rails.hatenadiary.com/entry/20141126/1417012848）
+requireとpermitを使ってものすごく強くした変数？？
+
+6.6 エラー表示
+6.5葉新規登録がうまくいった場合、行かなかった場合の処理
+app/views/users/new.html.erb(新規登録のページ)
+<div class="row">
+  <div class="col-md-6 col-md-offset-3">
+    <%= form_for(@user) do |f| %>
+      <%= render 'shared/error_messages', object: f.object %> <!-- ここを追加 -->
+
+      <%= f.label :name %>
+      <%= f.text_field :name, class: 'form-control' %>
+
+      <%= f.label :email %>
+      <%= f.email_field :email, class: 'form-control' %>
+
+      <%= f.label :password %>
+      <%= f.password_field :password, class: 'form-control' %>
+
+      <%= f.label :password_confirmation, "Confirmation" %>
+      <%= f.password_field :password_confirmation, class: 'form-control' %>
+
+      <%= f.submit "Create my account", class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>
+    <%= render 'shared/error_messages', object: f.object %> <!-- ここを追加 -->の意味
+      レンダー（http://railsdoc.com/references/render）
+      指定したhtmlを返す
+      object: f.objectの意味は？？？
+      sharedの中で指定されたオブジェクトが入る
+      app/views/shared/_error_messages.html.erb
+      の中身
+      <% if object.errors.any? %>
+        <div id="error_explanation">
+        <div class="alert alert-danger">
+        The form contains <%= pluralize(object.errors.count, "error") %>.
+        </div>
+        <ul>
+        <% object.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+        </ul>
+       </div>
+      <% end %>
+      objectには、@userが入ります。
+      ここでは、送信されたデータにエラーがある場合、@user.errorsにエラー内容が入っているのでそれらを取り出してメッセージとして表示している、という理解で大丈夫です。　
+6.7 ユーザー詳細画面
+　　新規登録後のshowページを表示
+　　showはログイン後に見せるページ
+　　app/views/users/show.html.erbにて下記を作成
+　　<h1>
+      <%= gravatar_for @user %>
+      <%= @user.name %>
+    </h1>
+    ここで、Railsのヘルパーという機能を使います。
+    何で？？
+    ヘルパーはモデルの情報を受け取って表示用の出力（HTMLタグの表示、テキストの出力）を行うメソッドを入れるモジュールですから。
+    他にもRailsのモデル・ビュー・コントローラー以外のロジックを記述するのに用いられます。
+    以下のコードを追加
+    app/helpers/users_helper.rb
+    module UsersHelper
+      def gravatar_for(user, options = { size: 80 })
+      サイズパラメータを定義
+        gravatar_id = Digest::MD5::hexdigest(user.email.downcase)
+        ハッシュタグからgravatar_idを求めている
+        size = options[:size]
+        写真サイズはオプションのものを使用する
+        gravatar_url = "https://secure.gravatar.com/avatar/#{gravatar_id}?s=#{size}"
+        写真のidは上で定義したとおり
+        image_tag(gravatar_url, alt: user.name, class: "gravatar")
+        イメージタグ（http://railsdoc.com/references/image_tag）を挿入
+      end
+    end
+
+6.8 フラッシュメッセージの追加       
+Railsで一時的なメッセージ（フラッシュメッセージ）を表示するためにはredirect_toやrenderの前に、flashというハッシュに:success、:alertなどのキーを指定してメッセージを代入します。
+    app/controllers/users_controller.rb
+    class UsersController < ApplicationController
+      def show # 追加
+       @user = User.find(params[:id])
+      end
+      ログイン後はidパラメータを見つけて表示してね
+      find(http://railsdoc.com/references/find)、データベースから見つけて
+      
+      def new
+        @user = User.new
+      end
+      新規登録ページでは、Userを作成してね
+    
+      def create
+      （ユーザーを追加するアクション）
+        @user = User.new(user_params)
+        if @user.save
+          redirect_to @user # ここを修正
+          redirect_toとは、
+        　指定されたページにリダイレクト
+        　（http://railsdoc.com/references/redirect_to）
+           リダイレクト先はuser.newのページ(新規作成)
+        else
+          render 'new'
+          新規登録ページを表示して
+        end
+      end
+      ...
+    end
+
+app/views/layouts/application.html.erb
+共通化されたペー���
+ <!DOCTYPE html>
+<html>
+<head>
+  <title>Microposts</title>
+  <%= stylesheet_link_tag    'application', media: 'all' %>
+  <%= javascript_include_tag 'application' %>
+  <%= csrf_meta_tags %>
+</head>
+<body>
+ <%= render 'layouts/header' %>
+  <div class="container">
+    <% flash.each do |message_type, message| %> <!-- ここから -->
+      <div class="alert alert-<%= message_type %>"><%= message %></div>
+    <% end %> <!-- ここまで追加 -->
+    (message_typeはusers_controllerの中で定義)
+    <%= yield %>
+  </div>
+</body>
+</html>
+
+7. ログイン機能
+新規登録できたのでログインできるようにします
+新規登録ができるようになりましたので、今度はログインできるようにします。
+
+Webアプリケーションでログインする場合は、ログイン情報をセッションとして、サーバーとブラウザに保存します。
+今回のアプリケーションでは、Railsで提供されるsessionという特別な変数にユーザーのidを入れることで、ログイン機能を実現します。
+ログインの際にはsession[:user_id]にユーザーIDを入れ、ログアウトの際にはsession[:user_id]をnilにします。
+
+7.2 コントローラとルートの作成
+$ rails generate controller 
+sessions 
+new
+セッションってコントローラーを新しく作ってね
+  コントローラーは司令塔
+
+config/routes.rbの書き換え
+Rails.application.routes.draw do
+  root to: 'static_pages#home'
+  ルートは、static_pages#homeに指定
+  
+  get 'signup',  to: 'users#new'
+  サインアップのときはusers#newを表示して
+  
+  get    'login'   => 'sessions#new'
+  ログインのときはセッションのnewを表示して
+  post   'login'   => 'sessions#create'
+  ログインのときポストされたらsessions#createアクションを起こして
+  delete 'logout'  => 'sessions#destroy'
+　ログアウトのときはデストロイってアクションを起こして
+
+  resources :users
+  usersについては、resrfulなアクション全部OK
+  resources :sessions, only: [:new, :create, :destroy]
+  sessionsについては
+  :new,
+  新規ユーザー作成ページ
+  :create, 
+  新規ユーザー作成アクション
+  :destroy
+  新規ユーザー削除アクション
+  だけ。
+end
+7.3 ビューの作成
+コントローラーできたからview作ろう
+app/views/sessions/new.html.erb
+<h1>Log in</h1>
+
+<div class="row">
+  <div class="col-md-6 col-md-offset-3">
+    <%= form_for(:session, url: login_path) do |f| %>
+    form_for(http://railsdoc.com/references/form_for)（http://qiita.com/shunsuke227ono/items/7accec12eef6d89b0aa9）
+    セッションのパラメータを、 login_pathに送信
+    nameの属性は全部sessionになる
+    nameって配列でもてるのね
+      <%= f.label :email %>
+      <%= f.email_field :email, class: 'form-control' %>
+
+      <%= f.label :password %>
+      <%= f.password_field :password, class: 'form-control' %>
+
+      <%= f.submit "Log in", class: "btn btn-primary" %>
+    <% end %>
+
+    <p>New user? <%= link_to "Sign up now!", signup_path %></p>
+    link_to（http://railsdoc.com/references/link_to）、
+    ボタンの名前は「Sign up now!」、
+  </div>
+</div>
+ここで、ログインに使う入力欄はメールアドレスとパスワードなので、f.email_field :emailとf.password_field :passwordで　２つの入力欄を作成しています。
+email_fieldを用いることで、<input>タグにtype="email"がつき、メールアドレス型式の入力欄になります。
+また、form_forの最初の引数に:sessionを取ることで、<input>のname属性がsession[email]、session[password]となります。今回はセッションを作成するので、user[email]、user[password]でないことに注意してください。
+class SessionsController < ApplicationController
+  def new
+  end
+
+  def create
+    @user = User.find_by(email: params[:session][:email].downcase)
+    if @user && @user.authenticate(params[:session][:password])
+      session[:user_id] = @user.id
+      flash[:info] = "logged in as #{@user.name}"
+      redirect_to @user
+    else
+      flash[:danger] = 'invalid email/password combination'
+      render 'new'
+    end
+  end
+  
+  def destroy
+    session[:user_id] = nil
+    redirect_to root_path
+  end
+end
+7.4 コントローラの作成
+viewできたからコントローラーをつくる
+class SessionsController < ApplicationController
+  def new
+  end
+
+  def create
+    @user = User.find_by(email: params[:session][:email].downcase)
+    ユーザーをメールアドレスから検索します。
+    （http://railsdoc.com/references/find_by）
+    if @user && @user.authenticate(params[:session][:password])
+      session[:user_id] = @user.id
+      flash[:info] = "logged in as #{@user.name}"
+      redirect_to @user
+    else
+      flash[:danger] = 'invalid email/password combination'
+      render 'new'
+    end
+    もしユーザーが見つかった場合は、authenticateメソッドでパスワードが正しいか調べます。
+    パスワードが正しい場合は、session[:user_id]にユーザーIDを入れ、ユーザーの詳細ページにリダイレクトします。
+    パスワードが間違っている場合は’new’テンプレートを表示します。
+  end
+  
+  def destroy
+    session[:user_id] = nil
+    redirect_to root_path
+  end
+end
+  ログアウト処理のdestroyアクションでは以下のようなことを行っています。
+  session[:user_id]をnilにしています。これでサーバーとブラウザの両方でセッションの情報が破棄されます。
+  アプリケーションのルート/にリダイレクトします。
+
+7.5 ヘルパメソッドの追加
+　ここで、現在のログインしているユーザーを返すcurrent_userメソッドと、logged_in?メソッドをヘルパモジュールのSessionHelperに定義します。
+　app/helpers/sessions_helper.rbを以下のように作成します。
+  
+  app/helpers/sessions_helper.rb
+module SessionsHelper
+  def current_user
+    @current_user ||= User.find_by(id: session[:user_id])
+  end
+    ログイン中の場合はログインしているユーザーを、ログインしていない場合はnilを返します。
+    「||=」は左の値がfalseかnilの場合に右の値の代入を行います。変数を初期化する際によく用いられます。
+    @current_user = @current_user || User.find_by(id: session[:user_id])と読み替えることができ、@current_userがnilのときに、User.find_by(id: session[:user_id])を実行します。
+    User.find_by(id: session[:user_id])は、session[:user_id]の値に一致するユーザーを返します。「find_byメソッドは、ユーザーが見つからない場合はnilを返します」。
+    したがって、session[:user_id]に一致するユーザーが存在する場合は@current_userにログイン中のユーザー（現在のユーザー）が入り、nilの場合は@current_userにnilが入ります。
+    メソッド中の最後の値が代入文の場合は、代入文を実行した後の左の値を返すので、current_userメソッドは@current_userの値を返します。
+    ||=で代入を行っているので、左側の@current_userに値が入っている場合は、右側のUser.find_byで始まる処理は実行されません。すなわち、ログインしているユーザーを毎回DBに取りに行かなくてすみます
+  
+  def logged_in?
+    !!current_user
+  end
+  current_userが存在する場合はtrueを、nilの場合はfalseを返します。
+  !!は、右側に続く値が存在する場合はtrueを、nilの場合はfalseを返します。
+  これは、否定演算子!を二回つかったものと考えることができます。
+  current_userが存在する場合、!current_userがfalseになり、もう一度!をつけるとfalseが反転してtrueになります。
+  current_userがnilの場合、!current_userがtrueになり、もう一度!をつけるとtrueが反転してfalseになります。  
+　defの中に?入れるのもOＫなのね
+
+  def store_location
+    session[:forwarding_url] = request.url if request.get?
+  end
+  リクエストがGETの場合は、session[:forwarding_url]にリクエストのURLを代入しています。
+ログインが必要なページにアクセスしようとした際に、ページのURLを一旦保存しておき、ログイン画面に遷移してログイン後に再び保存したURLにアクセスする場合にこのメソッドを使用します。
+end
+
+app/controllers/application_controller.rb
+class ApplicationController < ActionController::Base
+  protect_from_forgery with: :exception
+  include SessionsHelper
+
+  private
+  def logged_in_user
+    unless logged_in?
+      store_location
+      flash[:danger] = "Please log in."
+      redirect_to login_url
+    end
+  end
+end
+include SessionsHelperで、先ほどのSessionsHelperモジュールを読み込んでいます。
+
+ここで、logged_in_userメソッド内では以下のような処理を行っています。
+
+ログインしていない場合（logged_in?がfalseのとき）のみ処理を行います。
+store_locationメソッドで、アクセスしようとしたURLを保存しています。
+ログイン画面のURLにリダイレクトします。
+
+7.6 ナビゲーションの追加
+app/views/layouts/_header.html.erbを以下のように編集します。
+<header class="navbar navbar-fixed-top navbar-inverse">
+  <div class="container">
+    <%= link_to "Microposts", root_path, id: "logo" %>
+    <nav>
+      <ul class="nav navbar-nav navbar-right">
+        <li><%= link_to "Home", root_path %></li>
+        <li><%= link_to "Help", '#' %></li>
+        <% if logged_in? %>
+          <li><%= link_to "Users", '#' %></li>
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+              Account <b class="caret"></b>
+            </a>
+            <ul class="dropdown-menu">
+              <li><%= link_to "Profile", current_user %></li>
+              <li><%= link_to "Settings", '#' %></li>
+              <li class="divider"></li>
+              <li>
+                <%= link_to "Log out", logout_path, method: "delete" %>
+              </li>
+            </ul>
+          </li>
+        <% else %>
+          <li><%= link_to "Log in", login_path %></li>
+        <% end %>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+8.1 ���デルの作成
+まず、モデルを作成
+ rails generate model Micropost user:references content:text
+  rails generate model 
+  レイルズでモデルを作りましょう
+  Micropost 
+  マイクロポストってモデルです。
+  user:references content:text
+  二つの変数があります。
+　userとcontentです
+　モデルつくると2津ファイルができる
+　マイグレーションと、modelファイル
+　マイグレー���ョ���ファイルを触る
+　
+  class CreateMicroposts < ActiveRecord::Migration
+    def change
+      create_table :microposts do |t|
+        t.references :user, index: true
+        t.text :content
+  
+        t.timestamps
+      end
+    end
+  end
+　t.index [:user_id, :created_at]
+　これは複合クラス
+　バリデーションの追加
+　class Micropost < ActiveRecord::Base
+  belongs_to :user
+  validates :user_id, presence: true
+  validates :content, presence: true, length: { maximum: 140 }
+end
+　ユーザーIDが存在してて、コンテントにはなにか文字が入ってて140文字以内
+8.2 ユーザーと投稿の関連づけ
+
+ここで、Userモデルに以下のようにhas_many :micropostsを追加します。
+app/models/user.rb
+  has_many :microposts
+  Micropostモデルが生成される際にbelongs_to :userが指定されたので、ユーザーと投稿の関連づけは以下のようになっています。
+  それぞれのユーザーは複数の投稿を持つことができる。（has_many :microposts）
+  それぞれの投稿は特定の1人のユーザーのものである。（belongs_to :user）
+（http://ruby-rails.hatenadiary.com/entry/20141203/1417601540）
+  belongs_to（所属する）
+
+メソッド	用途
+micropost.user	投稿に関連付けられたユーザー
+user.microposts	ユーザーの全投稿
+
+メソッド	用途
+user.microposts.new	ユーザーの投稿を作成
+user.microposts.create	ユーザーの投稿を作成して保存
+
+ユーザーの全投稿.new	ユーザーの投稿を作成
+ユーザーの全投稿.create	ユーザーの投稿を作���して保存
+
+8.3 コントローラとルートの作成
+
+731　復習　モデル作ったから、コントローラーつくりましょう
+6.2 ルートの作成
+newのアクションができたら、次は誘導するroutesを設定します。
+routesは、configファイルの中にあります。
+routes.rbを以下のように設定してください。
+Rails.application.routes.draw do
+おまじない？？？
+  root to: 'static_pages#home'
+ルートはstaticページにしてね
+  get 'signup',  to: 'users#new'
+もしも、signupを拾ったら、user#newを見せてあげてね
+  resources :users
+  usersは「資源」だよ？
+end
+　資源化するとなにがいいのさ？
+　7つのアクションが起こせるんだ
+　7つって何？
+　こんな感じの7つ
+　GET    'sample'     => 'books#index'
+　サンプルをそのまま表示
+　GET    'sample/:id' => 'books#show'
+　サンプルにIDがくっついたものを表示
+GET    'sample/new' => 'books#new'
+　サンプルを新しく作りたいときに表示
+POST   'sample'     => 'books#create'
+　サンプルを作りたいときに表示
+GET    'sample/:id/edit' => 'books#edit'
+　サンプルのIDを編集したいときに表示
+DELETE 'sample/:id' => 'books#destroy'
+　サンプルのidに紐付いたページを消したいときに表示
+PUT    'sample/:id' => 'books#update'
+　アップデートしたいときに表示
+詳しくはここみて
+（http://gyazo.com/0724275ac06838a47a2140b6016135d7）
+
+6.1
+どうつくります？
+次のコマンドを打ち込むことで作れます
+「rails generate controller users」
+rails レイルズのコマンドで
+generate controller コントローラーを作ってね
+users 「users」っていう
+new？？？
+newってどういう意味？
+アクションの名前です
+アクションってなんですか？
+関数の名前と同じです、あんまし意味なかった
+
+それを打ち込んだら、
+「app/controllers/users_controller.rb」ができます。
+一般化すると、
+「app/controllers」の中に「つけた名前」_contoroller.rbができるのです。
+中をみるとこんな感じです
+
+class UsersController < ApplicationController
+  def new
+    @user = User.new
+  end
+end
+
+class UsersController < ApplicationController
+　UsersControllerってクラスを定義してます。その中にはApplicationControllerっていうのも入ってます
+  def new
+  newってアクションを定義しました。
+    @user = User.new
+    userの中にUser.newって入れて下さいって命令です
+  end
+end
+@user = User.newってどういう意味ですか？
+「Userクラスの新しいインスタンスを作成して、UsersControllerのインスタンス変数@userに代入しています。」
+インスタンス=実態（ふわふわしてないもの）
+実態変数？？に代入する
+
+
+
+
+
+RailsのジェネレータでUsersControllerを作成しておきます。最後にnewをつけるようにしてください。
+$ rails generate controller users new
+
+
+■lesson7－5での復習
+ modelを作りました。コマンドはrails -g model hoge huga huga2...てやつです。
+ 出来上がるのは、2種類のファイルです。
+ db/migrate/の下に日付_create_設定した名前.rb
+ app/model/設定した名前.rb
+ (二つとも拡張子はrb)
+ migrateには
+ change って関数ができます。
+ 関数の中には設定したファイルのカラムが入ってます。
+ それと「timestamps」も
+ ユニークにしたければ命令
+ 「t.index email,unique: true」っていうコマンドを足してください。
+ 出来たら、
+ rails db:migrateでマイグレーションしてください。
+ 
+
+Lesson7-5 
+わかんないのはたぶんログインの仕組み
+ログインしたあと同紐づけてる？
+5.2 マイグレーションの実行
+さっきはrails -g model Userでマイグレーションとモデルファイルをつくりました。
+次にマイグレーションフ���イルを触ります
+マイグレーション設定できるのは、設定したカラムです。
+
+以下のようなコマンドです。
+ここが詳しい。
+（http://ruby-rails.hatenadiary.com/entry/20140810/1407634200）
+デフォルトはこういう形です。
+
+class CreateArticles < ActiveRecord::Migration
+  def change
+    create_table :自分のつけたモデルの名前 do |t|
+      t.string :title
+      t.text :content
+
+      t.timestamps
+    end
+  end
+end
+
+今回はチョイ足しして、次のようにします。
+ def change
+    create_table :users do |t|
+      t.string :name
+      t.string :email
+      t.string :password_digest
+
+      t.timestamps
+
+★★ .index :email, unique: true # この行を追加
+    end
+  end
+これに一工夫します。
+これでマイグレーションします。
+？？マイグレーションってなんですか？
+統合って意味なので、データベースとrubyのコードを統合することだと思う
+どうやってやるんですか？
+rake db:migrate
+(http://railsdoc.com/references/rake%20db:migrate)
+:がrailsだとちょいたしって意味らしいです
+ほかにも:resetとかがあるらしいです
+
+5－1
+ターミナルで打ち込んだコマンド
+rails generate model User name email password_digest
+rails 
+-railsのコマンド
+generate model
+MVCのうちmodelを作る
+User
+「User」って名前の
+name email password_digest
+この3つの変数がある
+そしたら、2つのファイルが作られる
+1.db/migrate/20150610062143_create_users.rb
+2.app/models/user.rb
+■rails generate user name email password_digestで「マイグレーションファイル」「user.rbファイル」ができる
+
+疑問点
+マイグレーションの頭にクリエイトがついてるのはなぜ？
+→これはそういう仕組みだから
+http://www.rubylife.jp/rails/model/index4.html
+★★覚えるべきは「rails -g model hoge」を作られるファイルは
+　　2種類
+　　マイグレーションファイル「db/migrate/」に「日付_create_hoge.rb」
+　　モデルファイル「app/models/」に「hoge.rb」
+必ずこの二つが作られる？
+→configで設定しなかったらtest_unitも作成される
+（���れは普段どういうときに使われる？？？　メンターさんに聞いてい見る）
+しかし、今回は作らない設定をconfigにかけているので2つになる
+
+
+
+5.7 createアクションの作成より
+createで何やってんのか？　よくわかんない
+要素を分解する
+わかる→@message.save
+わかんない→@message = Message.new(message_params)
+newの意味
+モデルを作成すること
+どうやって？
+***.new()で作成
+***は何？ま
+大枠？？
+
+
+そもそもモデルって？
+
+
+わかんない→redirect_to root_path , notice: 'メッセージを保存しました'
+
+
+class MessagesController < ApplicationController
+  def index
+  end
+
+  ## ここから追記
+  def create
+    @message = Message.new(message_params)
+    @message.save
+    redirect_to root_path , notice: 'メッセージを保存しました'
+  end
+
+  private
+  def message_params
+    params.require(:message).permit(:name, :body)
+  end
+  ## ここまで
+end
+
+
+new
+モデルを生成すること
+どうやって生成するの？
+
+モデルオブジェクトを生成
+
+user = User.new
+属性を設定してモデルオブジェクトを生成(Ruby1.8 & 1.9)
+
+user = User.new(:name => "tarou")
+属性を設定してモデルオブジェクトを生成(Ruby1.9)
+
+user = User.new(name: "tarou")
+http://railsdoc.com/references/new
+
+lesson7
+流れ
+出来るようにしたいシステム
+・ユーザー登録できる
+・づぶやきの投稿
+・ほかのユーザーをフォローして表示できるようにする
+
+2.1
+アプリの新規作成rication
+rails new microposts -B
+でmicropostsを作る
+    ★コマンドの意味
+    rails レイルズでつくってね
+    new　新しいアプリ
+    microposts　「microposts」
+    -b bundle installはいらないよ
+    →bundle installってなぁに？
+        →「買ってすぐ使える状態にできる」ファイル
+        応用
+        「test」ってアプリを作ってみよう?
+            rails new test
+2.2
+ジェネレータの設定
+基本railsはファイルを自動生成してくれるけれど、今回は、テストコードとJavaScript、CSS(SCSS)、は生成しないので、消すコードを追加記載する
+追加するファイルは、
+config/application.rb
+configってどんなファイルが入っているところ？
+アプリケーションの設定ファイルが置かれているところ
+（config→「構成」って意味）
+application.rbってどんなファイル？
+すべての環境での共通設定ファイル
+他には開発環境限定（environment）とか、初期構築について（initializers）とかがあるらしい。
+その中で以下を記載
+     config.generators do |g|
+      g.stylesheets false
+      g.javascripts false
+      g.helper false
+      g.test_framework false
+    end
+    疑問
+    　gって何？
+    　  多分、ジェネレーターのg
+    　  「お前らは発生させないよ」って命令。フォルダ名は複数形。
+    　  helperについては、単数形？　→　ファイルだから
+    　  
+    　do |g|ってどういう意味
+    　      config.generators do |g|でジェネレーターの設定を変更できればOKだと思う
+    　(これが参考になるよ。http://qiita.com/yuutetu/items/135b1c8ab512208aebfe)
+    　
+3.1 Bootstrapの追加
+なんで？　デザインをブートストラップで行うから
+gem 'boostrap'でブートストラップを追加
+gem 'turbolinksは削除
+
+3.2 カスタムSCSSの追加
+scssを書いていく。
+app/assets/stylesheets/custom.scssの下に書いていく
+@import "bootstrap-sprockets";
+@import "bootstrap";
+でブートストラップ関連のモジュールを読み込んでいる
+
+3.3 JavaScriptの設定
+//= require jquery
+//= require jquery_ujs
+//= require bootstrap-sprockets
+
+
+
+今回はBootstrapを使ってレイアウトを行いますので、Gemfileの25行目付近にgem 'bootstrap-sass'を追加します。
+また、20行目付近のgem 'turbolinks'は今回は使用しないので、行頭に#を追加してコメントアウトしておきます。
+gemってなんですか？
+ 他のアプリと連携するためのファイルです
+ 
+
+★★★これまでの流れ（7/30 朝）
+1.アプリをつくります。コマンドは
+rails new microposts -bです
+
+2.1 自動生成される設定を変えます。
+config(構成)の中のapplication.rbってファイルで設定できます
+
+
+★★★これまでの流れ（7/30 朝）
+1.アプリをつくります。コマンドは
+rails new **** -b
+です
+
+2.1 自動生成される設定を変えます。
+・configの中のapplication.rbってファイルで設定できます
+たとえば、cssを発生させたくない場合
+config.generators do |g|
+    g.stylesheets = falseとします
+    
+3各ファイルの設定
+gemファイルでtwitterbootstrap。scssを入れる
+gemファイルは他のAPIとの調節役
+scssを���いていく。最初にプラグインを入れる
+javascriptを入れる
+
+##復習
+1.アプリを作成
+ rails new ### 
+
+
+
+
+
+
+
+
+
+
+
+
+ギット勉強
+LEVEL4が全然わからない
+rebaseってなに？
+
+Git Rebase
+ブランチを一つにまとめる方法として前回はマージを紹介しましたが、今回紹介するリベースを使うこともできます。リベースの動作は、マージするコミットのコピーをとって、どこかにストンと落とすというイメージです。
+ピンと来ないかもしれませんが、リベースのメリットは一本の連続したシーケンシャルなコミットに整形できることです。リベースだけ使っていると、コミットのログや履歴が非常にク���ーンな���態に保たれます。
+早速実際にどう動くのかを見てみましょう。
+
+
+マージについて
+手順
+1.ブランチを切ります（testとします）
+2.checkoutで移動します
+3.コミットします
+4.masterにcheckoutで戻ります
+5.masterでコミットします
+6.marge testとコマンドする
+
+
+
+
+http://k.swd.cc/learnGitBranching-ja/
+Gitのコミット
+コミットとはスナップショットのようなもの
+
+gitのブランチ
+Gitではコミットだけでなく、ブランチもまた信じられないほど軽量です。ブランチとは単に特定のコミットを指示したポインタにしか過ぎません。Gitの達人は決まってこう言うのは、そのためです���
+早めに、かつ頻繁にブランチを切りなさい
+どれほど多くのブランチを作ってもストレージやメモリを全然使わないので、ブランチを肥大化させるよりも論理的に分割していく方が簡単なのです。
+ブランチとコミットをあわせて使い始めると、これら2つのフィーチャがどのように連動して機能�����るかがわかるでしょう。ここではとりあえず、ブランチは基本的には「あるコミットとその親のコミットたちを含めた全てのコミット」のことを呼ぶと覚えておいてください。
+
+
+
+git
+ブランチ作った後にチェックアウト
+【参考���なりそうなところ】
+http://osdn.jp/magazine/09/03/16/0831212/4#git4-branch
+
+わかんない単語メモ
+複合インデックスって何？
+投稿を指定ユーザーで絞り込んだ後、���成時間で検索や並び替えを行うという処理がより速く行えるようになります。
+���にそれ？？？
+
+
+rubyの記号
+http://docs.ruby-lang.org/ja/1.8.7/doc/symref.html
+
+読んでおく
+http://qiita.com/kidach1/items/43e53811c12351915278
+
+rails c
+コンソールの立ち上げ
+
+こいつらの意味？？
+belongs_to :follower, class_name: "User"
+
+followerとfollowedの実体はUserクラスのオブジェクトなので上記のようにclass_nameを指定します。
+

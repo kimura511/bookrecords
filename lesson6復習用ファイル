@@ -1,0 +1,39 @@
+LESSON6クイズ用(回答)
+2. アプリケーションの新規作成
+message-boardというアプリを作りたい場合、
+「rails new」 message-boardでアプリが作れます。
+出来上がるフォルダ
+「app/」	ここにはアプリケーションのコントローラ、モデル、ビュー、ヘルパー、メイラー、そしてアセットが置かれます。以後、本ガイドでは基本的にこのディレクトリを中心に説明を行います。
+「config/」	アプリケーションの設定ファイルがここに置かれます。
+「db/」	データベースマイグレーションファイルなどが置かれます。
+「Gemfile
+Gemfile.lock」	これらのファイルは、Railsアプリケーションで必要となるgemの依存関係を記述します。Bundler gemを用いてgemのインストールを行います。Bundlerの詳細についてはBundlerのWebサイトを参照してください。
+「log/」	ログファイルが置かれます。
+
+2.1 Railsプロジェクトへ移動
+message-boardに移動したい場合、
+「cd」 message-boardでフォルダに移動
+
+2.2 Railsアプリの起動
+「rails s -p $PORT -b $IP」でサーバー立ち上げ
+
+2.3 アプリの起動確認
+cloud9上で実行した時に、右上にURLが表示されるので、そこをクリックしてアクセスしてください。
+
+2.4 アプリの終了
+railsのwebサーバを停止するにはコンソール上で「Ctrl + c」を押してください。
+
+2.5 Gitでのソース管理
+ここまで出来たところでソース管理を行っていきましょう。
+下記のコマンドを使用して、gitの初期化、最初の登録を行います。
+
+$ git 「init」
+$ git 「add .」
+$ git 「commit -a -m "first commit"」
+
+2.6 GitHubへの登録
+Githubにログインしてトップページの右下部にある「New repository」ボタンを押して、リポジトリ作成画面へ遷移します。
+$ git remote add origin git@github.com:[あなたのアカウント名]/message-board.git
+$ git push -u origin master
+[git remote add origin …]という部分ではGitHubで作ったリポジトリをリモートリポジトリとして登録しています。
+[git push -u origin master]という部分ではGitHubのリポジトリへcloud9上のgitのローカルリポジトリの状態をmasterにプッシュ(push)します。リモートリポジトリに自分の変更履歴がアップロードされて、リモートリポジトリ内の変更履歴がローカルリポジトリの変更履歴と同じ状態になります。 pushが終わったらGitHubの作成したリポジトリに行くと内容を確認することができます。

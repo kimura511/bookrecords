@@ -1,0 +1,40 @@
+今、こんな感じです。
+プレゼン能力
+今後、どんなものが必要
+
+MVCモデルと、webの概念を勉強中
+オブジェクト指向はまだちょっと...
+httpメソッド
+8つのメソッド
+レイルズは規約が大事
+railsで基礎をつくりたい
+つまづいている点、
+興味がある点
+web業界についての質問
+(例)×何が流行ってる？
+ユーザーを増やすためにしていること
+よく読んでいる本
+よく見ているページ
+
+課題
+1.rootにmemberで追加(getを追加)
+リンクをつけて、
+2,contror、followingの中に、userのフォローしている人の一覧を入れる
+3.8.5を参照
+  def show
+    @user = User.find(params[:id])
+    @microposts = @user.microposts
+  end
+
+MVCモデル
+LESSON6のMVCがわかればOK
+モデルに対して、
+viewを用意する
+フォロー一覧画面を用意
+どこのページでもいいので、
+followページとfollowerページをつくる
+ネックは
+follower一覧
+users/:id/users/follow-followers
+アクションの追加
+member do
